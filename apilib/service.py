@@ -101,16 +101,20 @@ class ServiceImplementation(Service):
             return FooResponse(...)
     '''
 
-    def invoke(self, method_name, request):
+    def invoke(self, method_name, request, already_validated=False):
         self.log_request(method_name, request)
 
         method_descriptor = self.resolve_method(method_name)
         method = getattr(self, method_descriptor.name)
 
-        error_context = validation.ErrorContext()
-        validation_context = validation.ValidationContext(service=self.get_name(), method=method_name)
-        request.validate(error_context, validation_context)
-        validation_errors = error_context.all_errors()
+        if already_validated:
+            validation_errors = None
+        else:
+            error_context = validation.ErrorContext()
+            validation_context = validation.ValidationContext(service=self.get_name(), method=method_name)
+            request.validate(error_context, validation_context)
+            validation_errors = error_context.all_errors()
+
         if validation_errors:
             response = method_descriptor.response_class(
                 response_code=ResponseCode.REQUEST_ERROR,
@@ -143,7 +147,7 @@ class ServiceImplementation(Service):
                 response_code=ResponseCode.REQUEST_ERROR,
                 errors=[ApiError(code=ve.code, path=ve.path, message=ve.msg) for ve in validation_errors])
         else:
-            response = self.invoke(method_name, request)
+            response = self.invoke(method_name, request, already_validated=True)
         return response.to_json() if response else None
 
     def resolve_method(self, method_name):

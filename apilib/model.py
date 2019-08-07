@@ -49,6 +49,7 @@ class Model(object):
         if error_context.has_errors():
             if is_root:
                 raise exceptions.ValidationError(error_context.all_errors())
+            # We return None here for parity with the behavior of from_json
             return None
         return self
 
