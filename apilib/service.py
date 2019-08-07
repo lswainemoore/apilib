@@ -106,18 +106,28 @@ class ServiceImplementation(Service):
 
         method_descriptor = self.resolve_method(method_name)
         method = getattr(self, method_descriptor.name)
-        try:
-            response = method(request)
-            response.response_code = ResponseCode.SUCCESS
-        except ApiException as e:
-            response = method_descriptor.response_class(response_code=e.response_code, errors=e.errors)
-        except AssertionError:
-            # Re-raise for assertions made in unittests
-            raise
-        except Exception as e:
-            if self.process_unhandled_exception(e):
+
+        error_context = validation.ErrorContext()
+        validation_context = validation.ValidationContext(service=self.get_name(), method=method_name)
+        request.validate(error_context, validation_context)
+        validation_errors = error_context.all_errors()
+        if validation_errors:
+            response = method_descriptor.response_class(
+                response_code=ResponseCode.REQUEST_ERROR,
+                errors=[ApiError(code=ve.code, path=ve.path, message=ve.msg) for ve in validation_errors])
+        else:
+            try:
+                response = method(request)
+                response.response_code = ResponseCode.SUCCESS
+            except ApiException as e:
+                response = method_descriptor.response_class(response_code=e.response_code, errors=e.errors)
+            except AssertionError:
+                # Re-raise for assertions made in unittests
                 raise
-            response = method_descriptor.response_class(response_code=ResponseCode.SERVER_ERROR)
+            except Exception as e:
+                if self.process_unhandled_exception(e):
+                    raise
+                response = method_descriptor.response_class(response_code=ResponseCode.SERVER_ERROR)
 
         self.log_response(method_name, request, response)
         return response

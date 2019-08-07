@@ -14,12 +14,25 @@ class ConfigurationRequired(ApilibException):
 class NotInitialized(ApilibException):
     pass
 
-class DeserializationError(ApilibException):
+class ModelLoadingError(ApilibException):
+    # Needs to be overridden
+    ERROR_NAME = None
+
     def __init__(self, errors):
         self.errors = errors
 
     def __str__(self):
-        return 'DeserializationError:\n  %s' % '\n  '.join(str(e) for e in self.errors)
+        return '%s:\n  %s' % (
+            self.ERROR_NAME,
+            '\n  '.join(str(e) for e in self.errors),
+        )
+
+class DeserializationError(ModelLoadingError):
+    ERROR_NAME = 'DeserializationError'
+
+class ValidationError(ModelLoadingError):
+    ERROR_NAME = 'ValidationError'
+
 
 class MethodNotFoundException(ApilibException):
     pass

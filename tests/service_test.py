@@ -52,6 +52,13 @@ class BasicServiceTest(unittest.TestCase):
         self.assertEqual('request_str', response['errors'][0]['path'])
         self.assertEqual('Field is required', response['errors'][0]['message'])
 
+        response = service.invoke('foo', FooRequest())
+        self.assertEqual('REQUEST_ERROR', response.response_code)
+        self.assertEqual(1, len(response.errors))
+        self.assertEqual(apilib.CommonErrorCodes.REQUIRED, response.errors[0].code)
+        self.assertEqual('request_str', response.errors[0].path)
+        self.assertEqual('Field is required', response.errors[0].message)
+
     def test_successful_response(self):
         service = FooServiceImpl()
         response = service.invoke_with_json('foo', {'request_str': 'blah'})

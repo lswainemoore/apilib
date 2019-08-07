@@ -39,6 +39,19 @@ class Model(object):
                 raise exceptions.UnknownFieldException('Unknown field "%s"' % key)
             setattr(self, key, value)
 
+    def validate(self, error_context=None, context=None):
+        is_root = not error_context
+        error_context = error_context or ErrorContext()
+        context = self.make_parent_context(self.to_dict(), context) if context else None
+        for field_name, field in six.iteritems(self._field_name_to_field):
+            field._validate(getattr(self, field_name), error_context.extend(field=field_name), context)
+
+        if error_context.has_errors():
+            if is_root:
+                raise exceptions.ValidationError(error_context.all_errors())
+            return None
+        return self
+
     def to_dict(self):
         return {key: self._field_name_to_field[key].to_json(value) for key, value in six.iteritems(self._data)}
 
